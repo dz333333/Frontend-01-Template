@@ -7,4 +7,6 @@
 utf-8 编码
 http://huozhonglu.com/2020/04/22/utf-8/
 
-总结：http://huozhonglu.com/wp-admin/post.php?post=116&action=edit
+总结：http://huozhonglu.com/2020/04/19/language-type/
+http://huozhonglu.com/2020/04/22/utf-8/
+http://huozhonglu.com/2020/04/22/js-lexical-grammar/
