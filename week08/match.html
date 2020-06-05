@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>内容</title>
+</head>
+
+<body style="padding: 0;margin: 0;">
+    <div>
+        <div id="id">
+            <div id='id2' class="cla">cla</div>
+        </div>
+    </div>
+</body>
+
+</html>
+<style>
+    div #id2.cla {
+        color: brown;
+    }
+</style>
+<script>
+    let isMatch = true
+    let list = []
+    let current = {}
+    let currentType = ''
+    function match(selector, element) {
+        console.log(selector, element.attributes, element.parentNode);
+        for (let i = 0; i <= selector.length; i++) {
+            if (selector[i] === '#') {
+                currentType = 'id'
+                current[currentType] = ''
+            } else if (selector[i] === '.') {
+                currentType = 'class'
+                current[currentType] = ''
+            } else if (selector[i] === ' ') {
+                list.push(current)
+                current = {}
+            } else {
+                if (JSON.stringify(current) === '{}') {
+                    currentType = 'tag'
+                    current[currentType] = ''
+                }
+                console.log(selector[selector.length - 1], 'val');
+
+
+                current[currentType] += selector[i]
+                if (i === selector.length - 1) {
+                    list.push(current)
+                    current = {}
+                }
+            }
+        }
+
+        list.reverse().map((item, index) => {
+
+            if (index === 0) {
+                Object.keys(item).forEach((key => {
+
+                    confirm(element, item, key)
+                }))
+                if (!isMatch) {
+                    return
+                }
+            } else {
+                Object.keys(item).forEach((key => {
+                    confirm(element.parentNode, item, key)
+                }))
+                console.log(element.parentNode, 'parent');
+
+            }
+
+        })
+        console.log(isMatch, 'isMatch');
+
+
+
+
+    }
+
+    function confirm(element, item, key) {
+        for (var i = element.attributes.length - 1; i >= 0; i--) {
+
+            if (key === element.attributes[i].name && item[key] === element.attributes[i].value) {
+                isMatch = true
+            }
+            if (key === element.attributes[i].name && item[key] !== element.attributes[i].value) {
+
+                isMatch = false
+            }
+
+            if (key === 'tag') {
+                if (item[key] === element.tagName.toLowerCase()) {
+                    isMatch && (isMatch = true)
+                } else {
+                    isMatch = false
+                    if (element.parentNode) {
+                        confirm(element.parentNode, item, key)
+                    }
+                }
+            }
+        }
+
+    }
+    match('div #id2.cla', document.getElementById('id2'));
+
+
+</script>
