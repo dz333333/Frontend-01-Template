@@ -1,0 +1,116 @@
+<script>
+    let regexp = /([0-9\.]+)|([ ]+)|([\r\n]+)|(\+)|(\—)|(\*)|(\/)/g
+    let dictionary = ['Number', 'Whitespace', 'LineTerminator', '+', '-', '*', '/']
+    function* tokenize(source) {
+        let result = null;
+        let lastIndex = 0;
+        while (true) {
+            lastIndex = regexp.lastIndex;
+            result = regexp.exec(source);
+
+            if (!result) {
+                break;
+            };
+            // console.log(regexp.lastIndex, 'lastIndex', lastIndex, result[0]);
+            if (regexp.lastIndex - lastIndex > result[0].length) {
+                throw Error('Unexpected token')
+            };
+            let token = {
+                type: null,
+                value: null
+            };
+            for (let index = 0; index < dictionary.length; index++) {
+                if (result[index + 1]) {
+                    token.type = dictionary[index]
+                }
+            };
+            token.value = result[0];
+            yield token;
+
+        };
+        yield { type: 'EOF' };
+    };
+    function continuousMultiple(source) {
+        let node = {
+            type: 'MultiplicativeExpression',
+            children: [source.shift(), source.shift(), source.shift()]
+        };
+        source.unshift(node);
+        return MultiplicativeExpression(source);
+
+    }
+    function Expression(source) {
+        if (source[0].type === 'AdditiveExpression' && source[1].type === 'EOF') {
+            let node = {
+                type: 'Expression',
+                children: [source.shift(), source.shift()]
+            }
+            source.unshift(node)
+            return source
+        } else {
+            AdditiveExpression(source)
+            return Expression(source)
+        }
+    };
+    function AdditiveExpression(source) {
+        if (source[0].type === 'Number') {
+            MultiplicativeExpression(source);
+            return AdditiveExpression(source);
+        };
+        if (source[0].type === 'MultiplicativeExpression') {
+            let node = {
+                type: 'AdditiveExpression',
+                children: [source.shift()]
+            };
+            source.unshift(node);
+            return AdditiveExpression(source);
+        }
+        if (source[0].type === 'AdditiveExpression' && source.length > 1 && source[1].type === '+') {
+            let node = {
+                type: 'AdditiveExpression',
+                children: [source.shift(), source.shift()]
+            };
+            MultiplicativeExpression(source)
+            node.children.push(source.shift())
+            source.unshift(node);
+            return AdditiveExpression(source);
+        } else if (source[0].type === 'AdditiveExpression' && source.length > 1 && source[1].type === '-') {
+            let node = {
+                type: 'AdditiveExpression',
+                children: [source.shift(), source.shift()]
+            };
+            MultiplicativeExpression(source);
+            node.children.push(source.shift());
+            source.unshift(node);
+            return AdditiveExpression(source);
+        } else {
+            return source[0];
+        }
+    };
+    function MultiplicativeExpression(source) {
+        if (source[0].type === 'Number') {
+            let node = {
+                type: 'MultiplicativeExpression',
+                children: [source.shift()]
+            };
+            source.unshift(node);
+            MultiplicativeExpression(source);
+        };
+        if (source[0].type === 'MultiplicativeExpression' && source.length > 1 && source[1].type === '*') {
+            continuousMultiple(source)
+        } else if (source[0].type === 'MultiplicativeExpression' && source.length > 1 && source[1].type === '/') {
+            continuousMultiple(source)
+        } else {
+            return source[0];
+        }
+
+    };
+    let source = []
+    for (const token of tokenize('1024+2 + 100*32')) {
+        if (token.type !== 'Whitespace' && token.type !== 'LineTerminator') {
+            source.push(token)
+        }
+    };
+    console.log(Expression(source));
+
+</script>
