@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>proxy</title>
+</head>
+
+<body>
+    <input type="range" min='0' max='255' id='r'>
+    <input type="range" min='0' max='255' id='g'>
+    <input type="range" min='0' max='255' id='b'>
+
+    <div id='color' style="width: 100px;height: 100px;">
+
+    </div>
+    <input type="text" id='input'>
+    <br />
+    <div id='message'>hello {{message}}</div>
+</body>
+
+</html>
+<script>
+    let handlers = new Map();
+    let reactivities = new Map();
+    let usedReactivities = []
+    function reactive(obj) {
+        //防止多个相同obj的reactive对象
+        if (reactivities.has(obj)) {
+            return reactivities.get(obj)
+        }
+        let proxy = new Proxy(obj, {
+            get(obj, prop) {
+                console.log(obj, prop);
+                //收集依赖
+                usedReactivities.push([obj, prop])
+                //解决a.b.c的情况
+                if (typeof obj[prop] === 'object') {
+                    return reactive(obj[prop])
+                }
+                //一定要return,不然obj[prop]拿不到值
+                return obj[prop]
+            },
+            set(obj, prop, val) {
+                obj[prop] = val;
+                // console.log(handlers, 0);
+                //只执行与prop有关的handler 
+                if (handlers.get(obj)) {
+                    // console.log(handlers.get(obj), 1);
+
+                    if (handlers.get(obj).get(prop)) {
+                        // console.log(handlers.get(obj).get(prop), 2);
+
+                        for (const handler of handlers.get(obj).get(prop)) {
+                            handler()
+                        }
+                    }
+                }
+                return obj[prop]
+            }
+        });
+        reactivities.set(obj, proxy)
+        return proxy
+    };
+
+    function effect(handler) {
+        usedReactivities = [];
+        //调用时访问属性，proxy就会执行get方法..任何操作proxy对象的行为都会被收集到
+        handler();
+        for (const usedReactivity of usedReactivities) {
+            let [obj, prop] = usedReactivity;
+            console.log(obj, prop);
+            if (!handlers.has(obj)) {
+                handlers.set(obj, new Map())
+            }
+            if (!handlers.get(obj).has(prop)) {
+                handlers.get(obj).set(prop, [])
+            }
+            //存放prop的有关操作的执行函数
+            handlers.get(obj).get(prop).push(handler)
+            // console.log(handlers.get(obj).get(prop),'prop');
+
+        }
+    }
+    let p = reactive({ r: 100, g: 255, b: 100 })
+
+    effect(() => {
+        document.getElementById('r').value = p.r
+    });
+    effect(() => {
+        document.getElementById('g').value = p.g
+    });
+    effect(() => {
+        document.getElementById('b').value = p.b
+    });
+    document.getElementById('r').addEventListener('input',(event)=>{
+        p.r=event.target.value
+    });
+    document.getElementById('g').addEventListener('input',(event)=>{
+        p.g=event.target.value
+    });
+    document.getElementById('b').addEventListener('input',(event)=>{
+        p.b=event.target.value
+    });
+    effect(()=>{
+        document.getElementById('color').style.backgroundColor=`rgb(${p.r},${p.g},${p.b})`
+    });
+
+
+
+    //hello message
+    let text = reactive({ message: 'world' });
+    let message = document.getElementById('message');
+    let input = document.getElementById('input');
+    input.addEventListener('input', (event) => {
+        text.message = event.target.value
+    });
+    effect(() => {
+        input.value =text.message
+    })
+
+    let range = document.createRange();
+    range.setStart(message.childNodes[0], 6)
+    range.setEnd(message.childNodes[0], 17)
+    effect(() => {
+        range.extractContents();
+        range.insertNode(document.createTextNode(text.message));
+    });
+    let arr = reactive([]);
+   
+</script>
